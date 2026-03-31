@@ -906,33 +906,73 @@ function formatTime(ts) {
 // RUTAS
 // ══════════════════════════════════════════════════════
 const DEMO_ROUTES = [
-  { id:'r1', nombre:'Ruta Retiro → Matadero', punto:'Puerta del Retiro, Madrid', fecha: new Date(Date.now()+86400000*2).toISOString(), ritmo:'Medio', desc:'Ruta urbana por el centro. Llevar agua y casco.', autor:'Diego R.', autorUid:'d4' },
-  { id:'r2', nombre:'Nocturna por el Manzanares', punto:'Puente de Segovia', fecha: new Date(Date.now()+86400000*3).toISOString(), ritmo:'Fácil', desc:'Ruta nocturna tranquila con luces. Nivel principiante apto.', autor:'Laura G.', autorUid:'d1' },
-  { id:'r3', nombre:'Sprint Paseo de la Castellana', punto:'Plaza de Castilla', fecha: new Date(Date.now()+86400000*5).toISOString(), ritmo:'Difícil', desc:'Para avanzados. Alta velocidad. Obligatorio protecciones.', autor:'Marcos F.', autorUid:'d2' },
+  { id:'r1', nombre:'Ruta Retiro → Matadero',        punto:'Puerta del Retiro, Madrid',   fecha: new Date(Date.now()+86400000*2).toISOString(), ritmo:'Medio',   desc:'Ruta urbana por el centro. Llevar agua y casco.',            autor:'Diego R.', autorUid:'d4', participantes:['d4','d1','d3'] },
+  { id:'r2', nombre:'Nocturna por el Manzanares',    punto:'Puente de Segovia',            fecha: new Date(Date.now()+86400000*3).toISOString(), ritmo:'Fácil',   desc:'Ruta nocturna tranquila con luces. Nivel principiante apto.', autor:'Laura G.', autorUid:'d1', participantes:['d1'] },
+  { id:'r3', nombre:'Sprint Paseo de la Castellana', punto:'Plaza de Castilla',            fecha: new Date(Date.now()+86400000*5).toISOString(), ritmo:'Difícil', desc:'Para avanzados. Alta velocidad. Obligatorio protecciones.',   autor:'Marcos F.',autorUid:'d2', participantes:['d2','d4'] },
 ];
+
+// Cache local de rutas para gestionar participantes sin recargar todo
+let _routesCache = [];
 
 async function renderRoutes() {
   const container = document.getElementById('routes-list');
   if (!container) return;
   container.innerHTML = '<div class="loading-msg">Cargando rutas... 🛼</div>';
-  let routes = DEMO_ROUTES;
+
+  let routes = JSON.parse(JSON.stringify(DEMO_ROUTES)); // copia profunda demo
+
   if (window.firebaseDb) {
     try {
       const { collection, getDocs, orderBy, query } = getFns();
       const q = query(collection(getDb(), 'rutas'), orderBy('fecha', 'asc'));
       const snap = await getDocs(q);
       if (!snap.empty) {
-        routes = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+        routes = snap.docs.map(d => ({
+          participantes: [],
+          ...d.data(),
+          id: d.id,
+        }));
       }
-    } catch {}
+    } catch (e) { console.warn('renderRoutes error:', e); }
   }
+
+  _routesCache = routes;
+  _renderRouteCards(routes);
+
+  document.getElementById('badge-routes').textContent = routes.length;
+  document.getElementById('badge-routes').style.display = routes.length > 0 ? '' : 'none';
+}
+
+function _renderRouteCards(routes) {
+  const container = document.getElementById('routes-list');
+  if (!container) return;
+  const myUid    = state.currentUser?.uid || state.firebaseUser?.uid || '';
+  const isAdmin  = myUid === ADMIN_UID || state.currentUser?.rol === 'admin';
+
   container.innerHTML = routes.map(r => {
-    const levelClass = { 'Fácil':'easy','Medio':'medium','Difícil':'hard' }[r.ritmo] || 'medium';
-    const fecha = new Date(r.fecha?.seconds ? r.fecha.seconds * 1000 : r.fecha);
-    const fechaStr = fecha.toLocaleDateString('es-ES', { weekday:'short', day:'numeric', month:'short' });
-    const horaStr  = fecha.toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });
+    const levelClass  = { 'Fácil':'easy', 'Medio':'medium', 'Difícil':'hard' }[r.ritmo] || 'medium';
+    const fecha       = new Date(r.fecha?.seconds ? r.fecha.seconds * 1000 : r.fecha);
+    const fechaStr    = fecha.toLocaleDateString('es-ES', { weekday:'short', day:'numeric', month:'short' });
+    const horaStr     = fecha.toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });
+    const participantes = Array.isArray(r.participantes) ? r.participantes : [];
+    const count       = participantes.length;
+    const isApuntado  = myUid && participantes.includes(myUid);
+    const isOrganizador = myUid && (r.autorUid === myUid || isAdmin);
+
+    const btnApuntarse = isApuntado
+      ? `<button class="btn-route-action leave" onclick="event.stopPropagation();toggleRuta('${r.id}', false)">❌ Desapuntarse</button>`
+      : `<button class="btn-route-action join"  onclick="event.stopPropagation();toggleRuta('${r.id}', true)">✅ Apuntarse</button>`;
+
+    const btnParticipantes = isOrganizador
+      ? `<button class="btn-route-action" onclick="event.stopPropagation();verParticipantes('${r.id}')">👥 ${count} participante${count !== 1 ? 's' : ''}</button>`
+      : `<span class="route-count">👥 ${count} apuntado${count !== 1 ? 's' : ''}</span>`;
+
+    const btnEditar = isOrganizador
+      ? `<button class="btn-route-action" onclick="event.stopPropagation();editRoute('${r.id}')">✏️ Editar</button>`
+      : '';
+
     return `
-      <div class="route-card" onclick="openRouteDetail('${r.id}')">
+      <div class="route-card" id="route-card-${r.id}">
         <div class="route-card-header">
           <div class="route-card-title">${r.nombre}</div>
           <span class="route-badge ${levelClass}">${r.ritmo}</span>
@@ -943,48 +983,168 @@ async function renderRoutes() {
         </div>
         <div class="route-card-desc">${r.desc || ''}</div>
         <div class="route-card-footer">
-          <span class="route-author">👤 ${r.autor || 'Desconocido'}</span>
+          <span class="route-author">👤 ${r.autor || 'Anónimo'}</span>
           <div class="route-actions">
-            ${r.autorUid === (state.currentUser?.uid) ? `<button class="btn-route-action" onclick="event.stopPropagation();editRoute('${r.id}')">✏️ Editar</button>` : ''}
-            <button class="btn-route-action join" onclick="event.stopPropagation();joinRoute('${r.id}')">✅ Apuntarse</button>
+            ${btnParticipantes}
+            ${btnEditar}
+            ${btnApuntarse}
           </div>
         </div>
       </div>
     `;
-  }).join('') || '<div class="loading-msg">No hay rutas activas</div>';
+  }).join('') || '<div class="loading-msg">No hay rutas activas 🛼</div>';
+}
 
-  // Actualizar badge
-  document.getElementById('badge-routes').textContent = routes.length;
-  document.getElementById('badge-routes').style.display = routes.length > 0 ? '' : 'none';
+async function toggleRuta(rutaId, apuntarse) {
+  const myUid = state.currentUser?.uid || state.firebaseUser?.uid;
+  if (!myUid) { showToast('⚠️ Inicia sesión para apuntarte'); return; }
+
+  // Actualizar cache local inmediatamente (UI optimista)
+  const ruta = _routesCache.find(r => r.id === rutaId);
+  if (!ruta) return;
+  if (!Array.isArray(ruta.participantes)) ruta.participantes = [];
+
+  if (apuntarse) {
+    if (!ruta.participantes.includes(myUid)) ruta.participantes.push(myUid);
+    showToast('✅ ¡Te has apuntado a la ruta!');
+  } else {
+    ruta.participantes = ruta.participantes.filter(u => u !== myUid);
+    showToast('❌ Te has desapuntado de la ruta');
+  }
+  _renderRouteCards(_routesCache); // re-render inmediato
+
+  // Persistir en Firestore
+  if (window.firebaseDb) {
+    try {
+      const { doc, updateDoc, arrayUnion, arrayRemove } = getFns();
+      await updateDoc(doc(getDb(), 'rutas', rutaId), {
+        participantes: apuntarse ? arrayUnion(myUid) : arrayRemove(myUid),
+      });
+    } catch (e) {
+      showToast('⚠️ Error al guardar: ' + e.message);
+      // Revertir en caso de error
+      if (apuntarse) ruta.participantes = ruta.participantes.filter(u => u !== myUid);
+      else if (!ruta.participantes.includes(myUid)) ruta.participantes.push(myUid);
+      _renderRouteCards(_routesCache);
+    }
+  }
+}
+
+async function verParticipantes(rutaId) {
+  const ruta = _routesCache.find(r => r.id === rutaId);
+  if (!ruta) return;
+  const participantes = Array.isArray(ruta.participantes) ? ruta.participantes : [];
+
+  // Construir lista de nombres
+  let lista = '';
+  if (participantes.length === 0) {
+    lista = '<p style="color:var(--text-dim);text-align:center;padding:1rem">Nadie apuntado aún</p>';
+  } else {
+    // Intentar obtener nombres de Firestore
+    const perfiles = [];
+    if (window.firebaseDb) {
+      try {
+        const { doc, getDoc } = getFns();
+        for (const uid of participantes) {
+          const snap = await getDoc(doc(getDb(), 'usuarios', uid));
+          if (snap.exists()) perfiles.push({ uid, ...snap.data() });
+          else perfiles.push({ uid, name: uid, avatar: '🛼' });
+        }
+      } catch {
+        participantes.forEach(uid => {
+          const u = state.allUsers.find(u => (u.id || u.uid) === uid);
+          perfiles.push(u || { uid, name: uid, avatar: '🛼' });
+        });
+      }
+    } else {
+      participantes.forEach(uid => {
+        const u = state.allUsers.find(u => (u.id || u.uid) === uid);
+        perfiles.push(u || { uid, name: uid, avatar: '🛼' });
+      });
+    }
+    lista = perfiles.map(p => `
+      <div class="user-result-card" style="cursor:default">
+        <div class="avatar">${p.avatar || '🛼'}</div>
+        <div class="user-result-info">
+          <div class="user-result-name">${p.name || 'Usuario'}</div>
+          <div class="user-result-username">@${p.username || p.uid?.slice(0,8) || '—'}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // Mostrar modal de participantes (reutilizamos modal-notifs con título dinámico)
+  document.querySelector('#modal-notifs .modal-header h3').textContent = `👥 Participantes — ${ruta.nombre}`;
+  document.getElementById('notif-list').innerHTML = lista;
+  openModal('modal-notifs');
 }
 
 function showConvocarRuta() {
-  document.getElementById('ruta-nombre').value = '';
-  document.getElementById('ruta-fecha').value  = '';
-  document.getElementById('ruta-punto').value  = '';
-  document.getElementById('ruta-desc').value   = '';
-  document.getElementById('ruta-edit-id').value = '';
+  document.getElementById('ruta-nombre').value   = '';
+  document.getElementById('ruta-fecha').value    = '';
+  document.getElementById('ruta-punto').value    = '';
+  document.getElementById('ruta-desc').value     = '';
+  document.getElementById('ruta-edit-id').value  = '';
   document.getElementById('ruta-error').textContent = '';
   document.querySelectorAll('#route-ritmo .chip').forEach(c => c.classList.remove('selected','active'));
   openModal('modal-ruta');
 }
 
+async function editRoute(rutaId) {
+  const ruta = _routesCache.find(r => r.id === rutaId);
+  if (!ruta) { showToast('⚠️ Ruta no encontrada'); return; }
+
+  document.getElementById('ruta-nombre').value  = ruta.nombre || '';
+  document.getElementById('ruta-punto').value   = ruta.punto  || '';
+  document.getElementById('ruta-desc').value    = ruta.desc   || '';
+  document.getElementById('ruta-edit-id').value = rutaId;
+  document.getElementById('ruta-error').textContent = '';
+
+  // Fecha: convertir a formato datetime-local (YYYY-MM-DDTHH:MM)
+  if (ruta.fecha) {
+    const d = new Date(ruta.fecha?.seconds ? ruta.fecha.seconds * 1000 : ruta.fecha);
+    if (!isNaN(d)) {
+      const pad = n => String(n).padStart(2,'0');
+      document.getElementById('ruta-fecha').value =
+        `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+  }
+
+  // Seleccionar chip de dificultad
+  document.querySelectorAll('#route-ritmo .chip').forEach(c => {
+    c.classList.remove('selected','active');
+    if (c.textContent.includes(ruta.ritmo)) c.classList.add('selected','active');
+  });
+
+  openModal('modal-ruta');
+}
+
 async function convocarRuta() {
-  const nombre   = document.getElementById('ruta-nombre').value.trim();
-  const fecha    = document.getElementById('ruta-fecha').value;
-  const punto    = document.getElementById('ruta-punto').value.trim();
-  const desc     = document.getElementById('ruta-desc').value.trim();
-  const editId   = document.getElementById('ruta-edit-id').value;
-  const ritmoEl  = document.querySelector('#route-ritmo .chip.selected');
-  const errEl    = document.getElementById('ruta-error');
+  const nombre  = document.getElementById('ruta-nombre').value.trim();
+  const fecha   = document.getElementById('ruta-fecha').value;
+  const punto   = document.getElementById('ruta-punto').value.trim();
+  const desc    = document.getElementById('ruta-desc').value.trim();
+  const editId  = document.getElementById('ruta-edit-id').value;
+  const ritmoEl = document.querySelector('#route-ritmo .chip.selected');
+  const errEl   = document.getElementById('ruta-error');
   errEl.textContent = '';
-  if (!nombre || !fecha || !punto || !ritmoEl) { errEl.textContent = '⚠️ Rellena todos los campos obligatorios'; return; }
+
+  if (!nombre || !fecha || !punto || !ritmoEl) {
+    errEl.textContent = '⚠️ Rellena todos los campos obligatorios';
+    return;
+  }
+
+  const ritmoTexto = ritmoEl.textContent.trim().replace(/^[🟢🟡🔴]\s?/, '');
   const rutaData = {
     nombre, fecha, punto, desc,
-    ritmo: ritmoEl.textContent.replace(/^[^\s]+ /, '').trim(),
-    autor: state.currentUser?.name || 'Anónimo',
-    autorUid: state.currentUser?.uid || 'demo',
+    ritmo: ritmoTexto,
+    autor:    state.currentUser?.name || 'Anónimo',
+    autorUid: state.currentUser?.uid  || 'demo',
   };
+
+  const btn = document.querySelector('#modal-ruta .btn-primary');
+  btn.textContent = 'Guardando...'; btn.disabled = true;
+
   if (window.firebaseDb) {
     try {
       const { doc, setDoc, addDoc, collection, serverTimestamp } = getFns();
@@ -993,28 +1153,23 @@ async function convocarRuta() {
         await setDoc(doc(db, 'rutas', editId), { ...rutaData, updatedAt: serverTimestamp() }, { merge: true });
         showToast('✅ Ruta actualizada');
       } else {
-        rutaData.createdAt = serverTimestamp();
+        rutaData.createdAt    = serverTimestamp();
+        rutaData.participantes = [state.currentUser?.uid || 'demo'];
         await addDoc(collection(db, 'rutas'), rutaData);
         showToast('🚀 ¡Ruta convocada!');
       }
-    } catch (e) { errEl.textContent = '⚠️ Error al guardar: ' + e.message; return; }
+    } catch (e) {
+      errEl.textContent = '⚠️ Error: ' + e.message;
+      btn.textContent = 'Convocar Ruta 🚀'; btn.disabled = false;
+      return;
+    }
   } else {
     showToast('🚀 ¡Ruta convocada! (modo demo)');
   }
+
+  btn.textContent = 'Convocar Ruta 🚀'; btn.disabled = false;
   closeModal('modal-ruta');
   renderRoutes();
-}
-
-function editRoute(routeId) {
-  showToast('✏️ Cargando ruta para editar...');
-}
-
-function joinRoute(routeId) {
-  showToast('✅ ¡Te has apuntado a la ruta!');
-}
-
-function openRouteDetail(routeId) {
-  showToast('📋 Detalle de ruta próximamente');
 }
 
 // ══════════════════════════════════════════════════════
@@ -1048,7 +1203,11 @@ function openProfileModal(uid) {
 }
 
 function openMyProfileFull() {
-  if (state.currentUser) openProfileModal(state.currentUser.uid);
+  const user = state.currentUser;
+  if (!user) return;
+  const id = user.uid || user.id;
+  if (id && !state.allUsers.find(u => (u.uid || u.id) === id)) state.allUsers.push(user);
+  openProfileModal(id);
 }
 
 // ══════════════════════════════════════════════════════
@@ -1057,52 +1216,92 @@ function openMyProfileFull() {
 function renderSettings() {
   const user = state.currentUser;
   if (!user) return;
-  document.getElementById('settings-name').textContent     = `${user.name || ''} ${user.surname || ''}`.trim();
+  document.getElementById('settings-name').textContent     = `${user.name || ''} ${user.surname || ''}`.trim() || 'Cargando...';
   document.getElementById('settings-username').textContent = `@${user.username || '—'}`;
   document.getElementById('settings-location').textContent = user.location || '';
   document.getElementById('settings-bio').textContent      = user.bio || '';
   document.getElementById('settings-avatar').textContent   = user.avatar || '🛼';
+
+  // Sincronizar botones de tema
+  const savedTheme = localStorage.getItem('rm1-theme') || 'dark';
+  document.getElementById('theme-dark-btn')?.classList.toggle('active',  savedTheme === 'dark');
+  document.getElementById('theme-light-btn')?.classList.toggle('active', savedTheme === 'light');
 }
 
+// ── EDITAR PERFIL ─────────────────────────────────────
 function openEditProfileModal() {
   const user = state.currentUser;
   if (!user) return;
-  document.getElementById('edit-name').value     = user.name || '';
+
+  document.getElementById('edit-name').value     = user.name     || '';
   document.getElementById('edit-location').value = user.location || '';
-  document.getElementById('edit-bio').value      = user.bio || '';
-  document.getElementById('edit-hobby').value    = user.hobby || '';
-  document.getElementById('edit-food').value     = user.food || '';
+  document.getElementById('edit-bio').value      = user.bio      || '';
+  document.getElementById('edit-hobby').value    = user.hobby    || '';
+  document.getElementById('edit-food').value     = user.food     || '';
   document.getElementById('edit-error').textContent = '';
   openModal('modal-edit-profile');
 }
 
 async function saveEditProfile() {
+  const errEl = document.getElementById('edit-error');
+  const name  = document.getElementById('edit-name').value.trim();
+  if (!name) { errEl.textContent = '⚠️ El nombre no puede estar vacío'; return; }
+
   const data = {
-    name:     document.getElementById('edit-name').value.trim(),
+    name,
     location: document.getElementById('edit-location').value.trim(),
     bio:      document.getElementById('edit-bio').value.trim(),
     hobby:    document.getElementById('edit-hobby').value.trim(),
     food:     document.getElementById('edit-food').value.trim(),
   };
+
+  const btn = document.querySelector('#modal-edit-profile .btn-primary');
+  btn.textContent = 'Guardando...'; btn.disabled = true;
+
   Object.assign(state.currentUser, data);
+
   if (window.firebaseDb && state.firebaseUser) {
     try {
       const { doc, updateDoc } = getFns();
       await updateDoc(doc(getDb(), 'usuarios', state.firebaseUser.uid), data);
-    } catch {}
+    } catch (e) {
+      errEl.textContent = '⚠️ Error al guardar: ' + e.message;
+      btn.textContent = 'Guardar ✅'; btn.disabled = false;
+      return;
+    }
   }
+
+  btn.textContent = 'Guardar ✅'; btn.disabled = false;
   closeModal('modal-edit-profile');
   renderSettings();
   showToast('✅ Perfil actualizado');
 }
 
+// ── PREFERENCIAS ──────────────────────────────────────
 function openPreferencesModal() {
   const user = state.currentUser;
   if (!user) return;
-  // Preseleccionar chips
-  ['prefs-looking','prefs-intention'].forEach(id => {
-    document.querySelectorAll(`#${id} .chip`).forEach(c => c.classList.remove('selected','active'));
+
+  // Preseleccionar lookingFor
+  document.querySelectorAll('#prefs-looking .chip').forEach(c => {
+    const val = c.textContent.trim();
+    const active = (user.lookingFor || []).includes(val);
+    c.classList.toggle('selected', active);
+    c.classList.toggle('active',   active);
   });
+
+  // Preseleccionar intention
+  document.querySelectorAll('#prefs-intention .chip').forEach(c => {
+    const val = c.textContent.trim();
+    const active = (user.intention || []).includes(val);
+    c.classList.toggle('selected', active);
+    c.classList.toggle('active',   active);
+  });
+
+  // Rango de edad
+  document.getElementById('prefs-age-min').value = user.ageMin || 18;
+  document.getElementById('prefs-age-max').value = user.ageMax || 99;
+
   openModal('modal-prefs');
 }
 
@@ -1110,30 +1309,58 @@ async function savePreferences() {
   const prefs = {
     lookingFor: getSelectedChips('prefs-looking'),
     intention:  getSelectedChips('prefs-intention'),
-    ageMin: parseInt(document.getElementById('prefs-age-min').value) || 18,
-    ageMax: parseInt(document.getElementById('prefs-age-max').value) || 99,
+    ageMin:     parseInt(document.getElementById('prefs-age-min').value) || 18,
+    ageMax:     parseInt(document.getElementById('prefs-age-max').value) || 99,
   };
+
+  const btn = document.querySelector('#modal-prefs .btn-primary');
+  btn.textContent = 'Guardando...'; btn.disabled = true;
+
   Object.assign(state.currentUser, prefs);
+
   if (window.firebaseDb && state.firebaseUser) {
     try {
       const { doc, updateDoc } = getFns();
       await updateDoc(doc(getDb(), 'usuarios', state.firebaseUser.uid), prefs);
-    } catch {}
+    } catch (e) {
+      showToast('⚠️ Error al guardar: ' + e.message);
+      btn.textContent = 'Guardar preferencias ✅'; btn.disabled = false;
+      return;
+    }
   }
+
+  btn.textContent = 'Guardar preferencias ✅'; btn.disabled = false;
   closeModal('modal-prefs');
   showToast('✅ Preferencias guardadas');
 }
 
+// ── CAMBIAR CONTRASEÑA ────────────────────────────────
+function openChangePasswordModal() {
+  document.getElementById('pass-old').value   = '';
+  document.getElementById('pass-new').value   = '';
+  document.getElementById('pass-new2').value  = '';
+  document.getElementById('pass-error').textContent = '';
+  openModal('modal-pass');
+}
+
 async function changePassword() {
-  const oldPass = document.getElementById('pass-old').value;
-  const newPass = document.getElementById('pass-new').value;
+  const oldPass  = document.getElementById('pass-old').value;
+  const newPass  = document.getElementById('pass-new').value;
   const newPass2 = document.getElementById('pass-new2').value;
-  const errEl   = document.getElementById('pass-error');
+  const errEl    = document.getElementById('pass-error');
   errEl.textContent = '';
+
   if (!oldPass || !newPass || !newPass2) { errEl.textContent = '⚠️ Rellena todos los campos'; return; }
-  if (newPass !== newPass2) { errEl.textContent = '⚠️ Las contraseñas nuevas no coinciden'; return; }
-  if (newPass.length < 6) { errEl.textContent = '⚠️ Mínimo 6 caracteres'; return; }
-  if (!window.firebaseAuth || !state.firebaseUser) { errEl.textContent = '⚠️ Firebase no configurado'; return; }
+  if (newPass !== newPass2)               { errEl.textContent = '⚠️ Las contraseñas nuevas no coinciden'; return; }
+  if (newPass.length < 6)                 { errEl.textContent = '⚠️ Mínimo 6 caracteres'; return; }
+  if (!/[0-9]/.test(newPass))             { errEl.textContent = '⚠️ Debe tener al menos un número'; return; }
+  if (!/[^A-Za-z0-9]/.test(newPass))     { errEl.textContent = '⚠️ Debe tener al menos un carácter especial'; return; }
+
+  if (!window.firebaseAuth || !state.firebaseUser) { errEl.textContent = '⚠️ Firebase no conectado'; return; }
+
+  const btn = document.querySelector('#modal-pass .btn-primary');
+  btn.textContent = 'Guardando...'; btn.disabled = true;
+
   try {
     const { EmailAuthProvider, reauthenticateWithCredential, updatePassword } = getFns();
     const cred = EmailAuthProvider.credential(state.firebaseUser.email, oldPass);
@@ -1141,7 +1368,19 @@ async function changePassword() {
     await updatePassword(state.firebaseUser, newPass);
     closeModal('modal-pass');
     showToast('✅ Contraseña actualizada');
-  } catch (e) { errEl.textContent = firebaseErr(e.code); }
+  } catch (e) {
+    errEl.textContent = firebaseErr(e.code);
+  } finally {
+    btn.textContent = 'Guardar contraseña'; btn.disabled = false;
+  }
+}
+
+// ── CAMBIAR CORREO ────────────────────────────────────
+function openChangeEmailModal() {
+  document.getElementById('new-email').value  = state.currentUser?.email || '';
+  document.getElementById('email-pass').value = '';
+  document.getElementById('email-error').textContent = '';
+  openModal('modal-email');
 }
 
 async function changeEmail() {
@@ -1149,17 +1388,34 @@ async function changeEmail() {
   const pass     = document.getElementById('email-pass').value;
   const errEl    = document.getElementById('email-error');
   errEl.textContent = '';
-  if (!newEmail || !pass) { errEl.textContent = '⚠️ Rellena todos los campos'; return; }
-  if (!window.firebaseAuth || !state.firebaseUser) { errEl.textContent = '⚠️ Firebase no configurado'; return; }
+
+  if (!newEmail || !pass)           { errEl.textContent = '⚠️ Rellena todos los campos'; return; }
+  if (!newEmail.includes('@'))       { errEl.textContent = '⚠️ Correo no válido'; return; }
+
+  if (!window.firebaseAuth || !state.firebaseUser) { errEl.textContent = '⚠️ Firebase no conectado'; return; }
+
+  const btn = document.querySelector('#modal-email .btn-primary');
+  btn.textContent = 'Guardando...'; btn.disabled = true;
+
   try {
     const { EmailAuthProvider, reauthenticateWithCredential, updateEmail } = getFns();
     const cred = EmailAuthProvider.credential(state.firebaseUser.email, pass);
     await reauthenticateWithCredential(state.firebaseUser, cred);
     await updateEmail(state.firebaseUser, newEmail);
+
+    // Actualizar también en Firestore
+    if (window.firebaseDb) {
+      const { doc, updateDoc } = getFns();
+      await updateDoc(doc(getDb(), 'usuarios', state.firebaseUser.uid), { email: newEmail });
+    }
     state.currentUser.email = newEmail;
     closeModal('modal-email');
     showToast('✅ Correo actualizado');
-  } catch (e) { errEl.textContent = firebaseErr(e.code); }
+  } catch (e) {
+    errEl.textContent = firebaseErr(e.code);
+  } finally {
+    btn.textContent = 'Guardar correo'; btn.disabled = false;
+  }
 }
 
 // ══════════════════════════════════════════════════════

@@ -1202,6 +1202,21 @@
   color: #00e676;
 }
 
+.btn-route-action.leave {
+  background: rgba(255,62,108,0.08);
+  border-color: rgba(255,62,108,0.3);
+  color: var(--pink);
+}
+
+.route-count {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
 /* ── SETTINGS ────────────────────────────── */
 .settings-container { max-width: 500px; margin: 0 auto; padding-bottom: 2rem; }
 

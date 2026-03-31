@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="RollerMatch — Encuentra tu compañero de ruedas. La app de patinaje estilo Tinder.">
+  <title>RollerMatch 🛼</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="estilos/main.css">
+  <link rel="stylesheet" href="estilos/app.css">
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#ff3e6c">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="RollerMatch">
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     SPLASH
+═══════════════════════════════════════════ -->
+<div id="splash" class="screen active">
+  <div class="splash-bg"></div>
+  <div class="splash-content">
+    <div class="logo-container">
+      <span class="logo-icon">🛼</span>
+      <h1 class="brand-name">Roller<span>Match</span></h1>
+      <p class="brand-tagline">Encuentra tu compañero de ruedas</p>
+    </div>
+    <div class="splash-btns">
+      <button class="btn-primary btn-full glow-pulse" onclick="showScreen('login')">Iniciar Sesión</button>
+      <button class="btn-secondary btn-full" onclick="showScreen('register')">Crear Cuenta</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     LOGIN
+═══════════════════════════════════════════ -->
+<div id="login" class="screen auth-screen">
+  <div class="auth-bg"></div>
+  <div class="auth-scroll">
+    <div class="auth-header">
+      <button class="btn-back" onclick="showScreen('splash')">← Volver</button>
+      <div class="logo-small">🛼 <span>RollerMatch</span></div>
+    </div>
+    <h2>¡Bienvenido/a!</h2>
+    <p class="auth-subtitle">Inicia sesión para encontrar tu pareja de ruedas</p>
+
+    <div class="form-group">
+      <label>Correo electrónico</label>
+      <input type="email" id="login-email" placeholder="tu@correo.com" class="input-neon" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label>Contraseña</label>
+      <div class="input-eye-wrap">
+        <input type="password" id="login-pass" placeholder="••••••••" class="input-neon" autocomplete="current-password">
+        <button class="eye-btn" type="button" onclick="toggleEye('login-pass', this)">👁</button>
+      </div>
+    </div>
+
+    <div class="form-error" id="login-error"></div>
+    <button class="btn-primary btn-full" onclick="handleLogin()">Entrar 🔥</button>
+
+    <div class="auth-divider"><span>¿Primera vez aquí?</span></div>
+    <button class="btn-secondary btn-full" onclick="showScreen('register')">Crear cuenta nueva</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     REGISTER
+═══════════════════════════════════════════ -->
+<div id="register" class="screen auth-screen">
+  <div class="auth-bg"></div>
+  <div class="auth-scroll">
+    <div class="auth-header">
+      <button class="btn-back" onclick="showScreen('splash')">← Volver</button>
+      <div class="logo-small">🛼 <span>RollerMatch</span></div>
+    </div>
+    <h2>Únete 🛼</h2>
+    <p class="auth-subtitle">Crea tu perfil y empieza a patinar</p>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Nombre *</label>
+        <input type="text" id="reg-name" placeholder="Tu nombre" class="input-neon" autocomplete="given-name">
+      </div>
+      <div class="form-group">
+        <label>Apellidos *</label>
+        <input type="text" id="reg-surname" placeholder="Tus apellidos" class="input-neon" autocomplete="family-name">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Apodo único *</label>
+      <div class="input-prefix-wrap">
+        <span class="input-prefix">@</span>
+        <input type="text" id="reg-username" placeholder="tu_apodo" class="input-neon prefix" autocomplete="username" oninput="checkUsername(this.value)">
+      </div>
+      <span class="field-hint" id="username-status"></span>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Fecha de nacimiento *</label>
+        <input type="date" id="reg-birthdate" class="input-neon">
+      </div>
+      <div class="form-group">
+        <label>Soy... *</label>
+        <div class="chip-group" id="reg-gender">
+          <div class="chip" onclick="selectChip(this,'reg-gender')">Hombre</div>
+          <div class="chip" onclick="selectChip(this,'reg-gender')">Mujer</div>
+          <div class="chip" onclick="selectChip(this,'reg-gender')">Otro</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Teléfono</label>
+      <input type="tel" id="reg-phone" placeholder="+34 600 000 000" class="input-neon" autocomplete="tel">
+    </div>
+
+    <div class="form-group">
+      <label>Correo electrónico *</label>
+      <input type="email" id="reg-email" placeholder="tu@correo.com" class="input-neon" autocomplete="email">
+    </div>
+
+    <div class="form-group">
+      <label>Contraseña * <span class="hint">(mín. 6 caracteres, 1 número, 1 especial)</span></label>
+      <div class="input-eye-wrap">
+        <input type="password" id="reg-pass" placeholder="••••••••" class="input-neon" autocomplete="new-password" oninput="checkPassStrength(this.value)">
+        <button class="eye-btn" type="button" onclick="toggleEye('reg-pass', this)">👁</button>
+      </div>
+      <div class="password-strength" id="pass-strength"></div>
+    </div>
+
+    <div class="form-group">
+      <label>Repetir contraseña *</label>
+      <div class="input-eye-wrap">
+        <input type="password" id="reg-pass2" placeholder="••••••••" class="input-neon" autocomplete="new-password">
+        <button class="eye-btn" type="button" onclick="toggleEye('reg-pass2', this)">👁</button>
+      </div>
+    </div>
+
+    <div class="form-error" id="reg-error"></div>
+    <button class="btn-primary btn-full" onclick="handleRegister()">Crear cuenta 🛼</button>
+    <div class="auth-divider"><span>¿Ya tienes cuenta?</span></div>
+    <button class="btn-secondary btn-full" onclick="showScreen('login')">Iniciar sesión</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     ONBOARDING
+═══════════════════════════════════════════ -->
+<div id="onboarding" class="screen auth-screen">
+  <div class="auth-bg"></div>
+  <div class="auth-scroll">
+    <div class="onboarding-header">
+      <div class="logo-small">🛼 <span>RollerMatch</span></div>
+      <div class="progress-bar"><div class="progress-fill" id="ob-progress" style="width:0%"></div></div>
+      <p class="ob-step-label" id="ob-step-label">Paso 1 de 6</p>
+    </div>
+
+    <!-- Paso 1: Estado civil -->
+    <div class="ob-step active" id="ob-1">
+      <h3>¿Cuál es tu estado civil?</h3>
+      <div class="chip-group vertical" id="ob-civil">
+        <div class="chip" onclick="selectChip(this,'ob-civil')">Soltero/a</div>
+        <div class="chip" onclick="selectChip(this,'ob-civil')">En pareja</div>
+        <div class="chip" onclick="selectChip(this,'ob-civil')">Casado/a</div>
+        <div class="chip" onclick="selectChip(this,'ob-civil')">Divorciado/a</div>
+        <div class="chip" onclick="selectChip(this,'ob-civil')">Prefiero no decirlo</div>
+      </div>
+    </div>
+
+    <!-- Paso 2: A quién buscas -->
+    <div class="ob-step" id="ob-2">
+      <h3>¿A quién quieres conocer?</h3>
+      <p class="ob-hint">Puedes seleccionar varias opciones</p>
+      <div class="chip-group" id="ob-looking-for">
+        <div class="chip multi" onclick="toggleChip(this)">Hombres</div>
+        <div class="chip multi" onclick="toggleChip(this)">Mujeres</div>
+        <div class="chip multi" onclick="toggleChip(this)">Otros</div>
+        <div class="chip multi" onclick="toggleChip(this)">Todos</div>
+      </div>
+    </div>
+
+    <!-- Paso 3: Qué buscas -->
+    <div class="ob-step" id="ob-3">
+      <h3>¿Qué estás buscando?</h3>
+      <p class="ob-hint">Puedes marcar varias</p>
+      <div class="chip-group" id="ob-intention">
+        <div class="chip multi" onclick="toggleChip(this)">Amistad</div>
+        <div class="chip multi" onclick="toggleChip(this)">Rollo puntual</div>
+        <div class="chip multi" onclick="toggleChip(this)">Relación seria</div>
+        <div class="chip multi" onclick="toggleChip(this)">Compañero de ruta</div>
+        <div class="chip multi" onclick="toggleChip(this)">Lo que surja</div>
+        <div class="chip multi" onclick="toggleChip(this)">Conocer gente nueva</div>
+      </div>
+    </div>
+
+    <!-- Paso 4: Gustos -->
+    <div class="ob-step" id="ob-4">
+      <h3>Cuéntanos tus gustos 🎨</h3>
+      <div class="form-group">
+        <label>Hobbies (aparte del patinaje)</label>
+        <input type="text" id="ob-hobby" placeholder="Música, fotografía, surf..." class="input-neon">
+      </div>
+      <div class="form-group">
+        <label>Comida favorita</label>
+        <input type="text" id="ob-food" placeholder="Sushi, Pizza, Tacos..." class="input-neon">
+      </div>
+      <div class="form-group">
+        <label>Género de música favorito</label>
+        <input type="text" id="ob-music" placeholder="Reggaeton, Pop, Electrónica..." class="input-neon">
+      </div>
+    </div>
+
+    <!-- Paso 5: Nivel de patinaje -->
+    <div class="ob-step" id="ob-5">
+      <h3>¿Cuál es tu nivel de patinaje? 🛼</h3>
+      <div class="chip-group vertical" id="ob-level">
+        <div class="chip" onclick="selectChip(this,'ob-level')">🟢 Principiante — Aprendo poco a poco</div>
+        <div class="chip" onclick="selectChip(this,'ob-level')">🟡 Intermedio — Me defiendo bien</div>
+        <div class="chip" onclick="selectChip(this,'ob-level')">🔴 Avanzado — Manejo con soltura</div>
+      </div>
+    </div>
+
+    <!-- Paso 6: Bio y ubicación -->
+    <div class="ob-step" id="ob-6">
+      <h3>Preséntate 👋</h3>
+      <div class="form-group">
+        <label>Bio — cuéntanos algo de ti</label>
+        <textarea id="ob-bio" class="input-neon textarea" placeholder="Patino desde los 15 años, me flipa el roller derby y las rutas nocturnas..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>¿Dónde estás?</label>
+        <input type="text" id="ob-location" placeholder="Barrio, Ciudad, País" class="input-neon">
+      </div>
+    </div>
+
+    <div class="ob-nav">
+      <button class="btn-secondary ob-btn" id="ob-prev" onclick="obPrev()" style="display:none">← Anterior</button>
+      <button class="btn-primary ob-btn" id="ob-next" onclick="obNext()">Siguiente →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     MAIN APP
+═══════════════════════════════════════════ -->
+<div id="app" class="screen">
+
+  <!-- TOP BAR -->
+  <header class="top-bar">
+    <div class="top-logo">🛼 <span>RollerMatch</span></div>
+    <div class="top-actions">
+      <button class="icon-btn notif-btn" onclick="showNotifications()" title="Notificaciones">
+        🔔<span class="badge" id="notif-badge" style="display:none">0</span>
+      </button>
+      <button class="icon-btn" onclick="showSection('sec-settings')" title="Ajustes">⚙️</button>
+    </div>
+  </header>
+
+  <!-- HOME -->
+  <section id="sec-home" class="app-section active">
+    <div class="section-content">
+      <div class="greeting" id="greeting-text"></div>
+      <div class="home-cards">
+        <div class="home-card" onclick="showSection('sec-routes')">
+          <div class="hc-icon">🗺️</div>
+          <div class="hc-text"><h3>Ver Rutas</h3><p>Rutas activas cerca</p></div>
+          <span class="badge hc-badge" id="badge-routes" style="display:none">0</span>
+        </div>
+        <div class="home-card" onclick="showConvocarRuta()">
+          <div class="hc-icon">📍</div>
+          <div class="hc-text"><h3>Convocar Ruta</h3><p>Organiza una salida</p></div>
+        </div>
+        <div class="home-card" onclick="showSection('sec-swipe')">
+          <div class="hc-icon">✨</div>
+          <div class="hc-text"><h3>Descubrir</h3><p>Encuentra patinadores</p></div>
+        </div>
+        <div class="home-card" onclick="showSection('sec-match')">
+          <div class="hc-icon">❤️</div>
+          <div class="hc-text"><h3>Mis Matches</h3><p>Tus conexiones</p></div>
+          <span class="badge hc-badge" id="badge-matches" style="display:none">0</span>
+        </div>
+      </div>
+      <div class="feat-label">Patinadores cerca de ti</div>
+      <div class="mini-cards-row" id="mini-cards">
+        <div class="mini-card-skeleton"></div>
+        <div class="mini-card-skeleton"></div>
+        <div class="mini-card-skeleton"></div>
+        <div class="mini-card-skeleton"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SWIPE / DESCUBRIR -->
+  <section id="sec-swipe" class="app-section" style="display:none">
+    <div class="swipe-area">
+      <div class="swipe-stack" id="swipe-stack">
+        <div class="swipe-empty" id="swipe-empty" style="display:none">
+          <div style="font-size:4rem">🛼</div>
+          <p>No hay más patinadores por ahora.<br>¡Vuelve más tarde!</p>
+          <button class="btn-sm-primary" onclick="reloadSwipe()">Recargar</button>
+        </div>
+      </div>
+      <div class="swipe-actions">
+        <button class="swipe-btn nope" onclick="swipeCard('left')" title="Pasar">✕</button>
+        <button class="swipe-btn like" onclick="swipeCard('right')" title="Me gusta">❤️</button>
+        <button class="swipe-btn super" onclick="superLike()" title="Super Like">⭐</button>
+      </div>
+      <div class="swipe-hint" style="width:100%;max-width:400px">
+        <span>👈 Pasar</span><span>¡Me gusta! 👉</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- BUSCAR -->
+  <section id="sec-search" class="app-section" style="display:none">
+    <div class="search-container">
+      <div class="search-bar">
+        <span class="search-icon">🔍</span>
+        <input type="search" placeholder="Buscar por nombre o @apodo..." id="search-input" oninput="filterSearch()" class="input-neon borderless" style="background:none;border:none;padding:0;box-shadow:none;">
+        <button class="search-clear" onclick="clearSearch()" style="display:none" id="search-clear-btn">✕</button>
+      </div>
+      <div class="search-filters">
+        <button class="filter-btn active" onclick="setSearchFilter(this,'all')">Todos</button>
+        <button class="filter-btn" onclick="setSearchFilter(this,'friends')">Matches</button>
+        <button class="filter-btn" onclick="setSearchFilter(this,'nearby')">Cerca</button>
+      </div>
+      <div class="search-results" id="search-results"></div>
+    </div>
+  </section>
+
+  <!-- LIKES -->
+  <section id="sec-likes" class="app-section" style="display:none">
+    <div class="section-header">
+      <h2>Likes ❤️</h2>
+      <div class="tab-group">
+        <button class="tab-btn active" onclick="setLikesTab(this,'received')">Recibidos</button>
+        <button class="tab-btn" onclick="setLikesTab(this,'sent')">Enviados</button>
+      </div>
+    </div>
+    <div class="likes-grid" id="likes-grid"></div>
+  </section>
+
+  <!-- CHATS -->
+  <section id="sec-chats" class="app-section" style="display:none">
+    <div class="section-header">
+      <h2>Mensajes 💬</h2>
+      <button class="btn-sm-primary" onclick="showNewChat()">+ Nuevo</button>
+    </div>
+    <div class="chats-list" id="chats-list"></div>
+  </section>
+
+  <!-- CHAT ROOM -->
+  <section id="sec-chat-room" class="app-section chat-room-section" style="display:none">
+    <div class="chat-room-header">
+      <button class="btn-back-sm" onclick="showSection('sec-chats')">←</button>
+      <div class="chat-room-user" onclick="openCurrentChatProfile()">
+        <div class="avatar-sm" id="chatroom-avatar">🛼</div>
+        <div>
+          <div class="chat-room-name" id="chatroom-name">—</div>
+          <div class="chat-room-status" id="chatroom-status">🟢 En línea</div>
+        </div>
+      </div>
+      <div style="width:34px"></div>
+    </div>
+    <div class="chat-messages" id="chat-messages"></div>
+    <div class="chat-input-area">
+      <input type="text" placeholder="Escribe un mensaje..." id="chat-input"
+        class="input-neon" style="flex:1;"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}">
+      <button class="send-btn" onclick="sendMessage()">🛼</button>
+    </div>
+  </section>
+
+  <!-- MATCHES -->
+  <section id="sec-match" class="app-section" style="display:none">
+    <div class="section-header"><h2>Matches ✨</h2></div>
+    <div id="matches-empty" class="empty-state" style="display:none">
+      <div style="font-size:3rem">✨</div>
+      <p>Aún no tienes matches.<br>¡Descubre patinadores y conecta!</p>
+      <button class="btn-sm-primary" onclick="showSection('sec-swipe')">Descubrir 🛼</button>
+    </div>
+    <div class="matches-list" id="matches-list"></div>
+  </section>
+
+  <!-- RUTAS -->
+  <section id="sec-routes" class="app-section" style="display:none">
+    <div class="section-header">
+      <h2>Rutas 🗺️</h2>
+      <button class="btn-sm-primary" onclick="showConvocarRuta()">+ Convocar</button>
+    </div>
+    <div class="routes-list" id="routes-list"><div class="loading-msg">Cargando rutas... 🛼</div></div>
+  </section>
+
+  <!-- AJUSTES -->
+  <section id="sec-settings" class="app-section" style="display:none">
+    <div class="settings-container">
+      <div class="settings-profile-top">
+        <div class="settings-avatar-wrap">
+          <div class="settings-avatar" id="settings-avatar">🛼</div>
+          <button class="avatar-edit-btn" onclick="showToast('Fotos de perfil próximamente 📷')">📷</button>
+        </div>
+        <div class="settings-name" id="settings-name">Cargando...</div>
+        <div class="settings-username" id="settings-username">@—</div>
+        <div class="settings-location" id="settings-location"></div>
+        <div class="settings-bio" id="settings-bio"></div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-label">APARIENCIA</div>
+        <div class="settings-item no-arrow">
+          <span>🌙 Tema</span>
+          <div class="toggle-group">
+            <button class="toggle-btn active" id="theme-dark-btn" onclick="setTheme('dark')">Oscuro</button>
+            <button class="toggle-btn" id="theme-light-btn" onclick="setTheme('light')">Claro</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-label">MI PERFIL</div>
+        <div class="settings-item" onclick="openEditProfileModal()"><span>👤 Editar perfil</span><span class="arrow">›</span></div>
+        <div class="settings-item" onclick="openPreferencesModal()"><span>🎯 Preferencias de búsqueda</span><span class="arrow">›</span></div>
+        <div class="settings-item" onclick="openMyProfileFull()"><span>🛼 Ver mi perfil</span><span class="arrow">›</span></div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-label">CUENTA</div>
+        <div class="settings-item" onclick="openChangePasswordModal()"><span>🔑 Cambiar contraseña</span><span class="arrow">›</span></div>
+        <div class="settings-item" onclick="openChangeEmailModal()"><span>✉️ Cambiar correo</span><span class="arrow">›</span></div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-label">SESIÓN</div>
+        <div class="settings-item danger" onclick="handleLogout()"><span>🚪 Cerrar sesión</span><span class="arrow">›</span></div>
+      </div>
+
+      <div class="settings-version">RollerMatch1 v1.0 🛼 · Hecho con ❤️</div>
+    </div>
+  </section>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" onclick="showSection('sec-home')" id="nav-home">
+      <span class="nav-icon">🏠</span><span class="nav-label">Home</span>
+    </button>
+    <button class="nav-btn" onclick="showSection('sec-swipe')" id="nav-swipe">
+      <span class="nav-icon">🛼</span><span class="nav-label">Descubrir</span>
+    </button>
+    <button class="nav-btn" onclick="showSection('sec-search')" id="nav-search">
+      <span class="nav-icon">🔍</span><span class="nav-label">Buscar</span>
+    </button>
+    <button class="nav-btn" onclick="showSection('sec-chats')" id="nav-chats">
+      <span class="nav-icon">💬</span><span class="nav-label">Chats</span>
+      <span class="nav-badge" id="chat-badge" style="display:none">0</span>
+    </button>
+    <button class="nav-btn" onclick="showSection('sec-match')" id="nav-match">
+      <span class="nav-icon">✨</span><span class="nav-label">Matches</span>
+      <span class="nav-badge" id="match-badge" style="display:none">0</span>
+    </button>
+  </nav>
+
+</div><!-- /#app -->
+
+<!-- ═══════════════════════════════════════════
+     MODALS
+═══════════════════════════════════════════ -->
+
+<!-- MATCH CELEBRATION -->
+<div id="match-overlay" class="match-overlay" style="display:none">
+  <div class="match-celebration">
+    <div class="match-emojis">🛼✨🛼</div>
+    <h2>¡Es un Match!</h2>
+    <p id="match-name">¡Os habéis gustado mutuamente!</p>
+    <div class="match-avatars">
+      <div class="match-av" id="match-av-me">🛼</div>
+      <div class="match-heart">💜</div>
+      <div class="match-av" id="match-av-them">🎉</div>
+    </div>
+    <button class="btn-primary btn-full" onclick="sendMatchMessage()">Enviar mensaje 💬</button>
+    <button class="btn-ghost" onclick="closeMatch()">Seguir explorando</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast" class="toast"></div>
+
+<!-- PROFILE MODAL -->
+<div id="modal-profile" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal('modal-profile')">
+  <div class="modal-box profile-modal scrollable">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3 id="modal-profile-name">Perfil</h3>
+      <button class="modal-close" onclick="closeModal('modal-profile')">✕</button>
+    </div>
+    <div id="profile-card-full"></div>
+    <div class="profile-actions">
+      <button class="swipe-btn nope sm" onclick="closeModal('modal-profile');swipeCard('left')">✕</button>
+      <button class="btn-primary flex1" onclick="closeModal('modal-profile');openChatFromProfile()">💬 Mensaje</button>
+      <button class="swipe-btn like sm" onclick="closeModal('modal-profile');swipeCard('right')">❤️</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONVOCAR RUTA MODAL -->
+<div id="modal-ruta" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal('modal-ruta')">
+  <div class="modal-box scrollable">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3>📍 Convocar Ruta</h3>
+      <button class="modal-close" onclick="closeModal('modal-ruta')">✕</button>
+    </div>
+    <div class="form-group">
+      <label>Nombre de la ruta *</label>
+      <input type="text" id="ruta-nombre" placeholder="Ruta del Retiro al Matadero..." class="input-neon">
+    </div>
+    <div class="form-group">
+      <label>Fecha y hora *</label>
+      <input type="datetime-local" id="ruta-fecha" class="input-neon">
+    </div>
+    <div class="form-group">
+      <label>Dificultad *</label>
+      <div class="chip-group" id="route-ritmo">
+        <div class="chip" onclick="selectChip(this,'route-ritmo')">🟢 Fácil</div>
+        <div class="chip" onclick="selectChip(this,'route-ritmo')">🟡 Medio</div>
+        <div class="chip" onclick="selectChip(this,'route-ritmo')">🔴 Difícil</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Lugar de encuentro *</label>
+      <input type="text" id="ruta-punto" placeholder="Plaza de la Cibeles, Madrid" class="input-neon">
+    </div>
+    <div class="form-group">
+      <label>Descripción</label>
+      <textarea id="ruta-desc" class="input-neon textarea" placeholder="Llevar agua, nivel mínimo intermedio..."></textarea>
+    </div>
+    <input type="hidden" id="ruta-edit-id" value="">
+    <div class="form-error" id="ruta-error"></div>
+    <button class="btn-primary btn-full" onclick="convocarRuta()">Convocar Ruta 🚀</button>
+  </div>
+</div>
+
+<!-- EDIT PROFILE MODAL -->
+<div id="modal-edit-profile" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal('modal-edit-profile')">
+  <div class="modal-box scrollable">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3>👤 Editar Perfil</h3>
+      <button class="modal-close" onclick="closeModal('modal-edit-profile')">✕</button>
+    </div>
+    <div class="form-group">
+      <label>Nombre</label>
+      <input type="text" id="edit-name" class="input-neon">
+    </div>
+    <div class="form-group">
+      <label>Ubicación</label>
+      <input type="text" id="edit-location" class="input-neon" placeholder="Barrio, Ciudad">
+    </div>
+    <div class="form-group">
+      <label>Bio</label>
+      <textarea id="edit-bio" class="input-neon textarea" placeholder="Cuéntanos algo..."></textarea>
+    </div>
+    <div class="form-group">
+      <label>Hobby</label>
+      <input type="text" id="edit-hobby" class="input-neon" placeholder="Música, fotos...">
+    </div>
+    <div class="form-group">
+      <label>Comida favorita</label>
+      <input type="text" id="edit-food" class="input-neon" placeholder="Sushi, Pizza...">
+    </div>
+    <div class="form-error" id="edit-error"></div>
+    <button class="btn-primary btn-full" onclick="saveEditProfile()">Guardar ✅</button>
+  </div>
+</div>
+
+<!-- PREFERENCES MODAL -->
+<div id="modal-prefs" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal('modal-prefs')">
+  <div class="modal-box scrollable">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3>🎯 Preferencias de búsqueda</h3>
+      <button class="modal-close" onclick="closeModal('modal-prefs')">✕</button>
+    </div>
+    <div class="form-group">
+      <label>Quiero ver</label>
+      <div class="chip-group" id="prefs-looking">
+        <div class="chip multi" onclick="toggleChip(this)">Hombres</div>
+        <div class="chip multi" onclick="toggleChip(this)">Mujeres</div>
+        <div class="chip multi" onclick="toggleChip(this)">Otros</div>
+        <div class="chip multi" onclick="toggleChip(this)">Todos</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Busco</label>
+      <div class="chip-group" id="prefs-intention">
+        <div class="chip multi" onclick="toggleChip(this)">Amistad</div>
+        <div class="chip multi" onclick="toggleChip(this)">Rollo puntual</div>
+        <div class="chip multi" onclick="toggleChip(this)">Relación seria</div>
+        <div class="chip multi" onclick="toggleChip(this)">Compañero de ruta</div>
+        <div class="chip multi" onclick="toggleChip(this)">Lo que surja</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Rango de edad</label>
+      <div class="range-row">
+        <input type="number" id="prefs-age-min" class="input-neon range-input" placeholder="18" min="16" max="99">
+        <span class="range-sep">—</span>
+        <input type="number" id="prefs-age-max" class="input-neon range-input" placeholder="45" min="16" max="99">
+      </div>
+    </div>
+    <button class="btn-primary btn-full" onclick="savePreferences()">Guardar preferencias ✅</button>
+  </div>
+</div>
+
+<!-- CHANGE PASSWORD -->
+<div id="modal-pass" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal('modal-pass')">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3>🔑 Cambiar contraseña</h3>
+      <button class="modal-close" onclick="closeModal('modal-pass')">✕</button>
+    </div>
+    <div class="form-group">
+      <label>Contraseña actual</label>
+      <div class="input-eye-wrap">
+        <input type="password" id="pass-old" class="input-neon" placeholder="••••••••">
+        <button class="eye-btn" type="button" onclick="toggleEye('pass-old',this)">👁</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Nueva contraseña</label>
+      <div class="input-eye-wrap">
+        <input type="password" id="pass-new" class="input-neon" placeholder="••••••••">
+        <button class="eye-btn" type="button" onclick="toggleEye('pass-new',this)">👁</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Repetir nueva contraseña</label>
+      <div class="input-eye-wrap">
+        <input type="password" id="pass-new2" class="input-neon" placeholder="••••••••">
+        <button class="eye-btn" type="button" onclick="toggleEye('pass-new2',this)">👁</button>
+      </div>
+    </div>
+    <div class="form-error" id="pass-error"></div>
+    <button class="btn-primary btn-full" onclick="changePassword()">Guardar contraseña</button>
+  </div>
+</div>
+
+<!-- CHANGE EMAIL -->
+<div id="modal-email" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal('modal-email')">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3>✉️ Cambiar correo</h3>
+      <button class="modal-close" onclick="closeModal('modal-email')">✕</button>
+    </div>
+    <div class="form-group">
+      <label>Nuevo correo</label>
+      <input type="email" id="new-email" class="input-neon" placeholder="nuevo@correo.com">
+    </div>
+    <div class="form-group">
+      <label>Contraseña actual</label>
+      <input type="password" id="email-pass" class="input-neon" placeholder="••••••••">
+    </div>
+    <div class="form-error" id="email-error"></div>
+    <button class="btn-primary btn-full" onclick="changeEmail()">Guardar correo</button>
+  </div>
+</div>
+
+<!-- NEW CHAT -->
+<div id="modal-new-chat" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal('modal-new-chat')">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3>💬 Nuevo mensaje</h3>
+      <button class="modal-close" onclick="closeModal('modal-new-chat')">✕</button>
+    </div>
+    <p class="modal-desc">Busca por nombre o @apodo</p>
+    <div class="search-bar" style="margin-bottom:1rem">
+      <span>🔍</span>
+      <input type="text" id="new-chat-search" placeholder="Buscar usuario..." class="input-neon" style="background:none;border:none;padding:0;box-shadow:none;flex:1;" oninput="searchNewChatUser(this.value)">
+    </div>
+    <div id="new-chat-results"></div>
+  </div>
+</div>
+
+<!-- NOTIFICATIONS MODAL -->
+<div id="modal-notifs" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeModal('modal-notifs')">
+  <div class="modal-box scrollable">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3>🔔 Notificaciones</h3>
+      <button class="modal-close" onclick="closeModal('modal-notifs')">✕</button>
+    </div>
+    <div class="notif-list" id="notif-list">
+      <p class="loading-msg" style="padding:1rem 0">Sin notificaciones nuevas</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     FIREBASE + APP JS
+═══════════════════════════════════════════ -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import {
+    getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+    signOut, onAuthStateChanged, updatePassword, updateEmail,
+    EmailAuthProvider, reauthenticateWithCredential
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import {
+    getFirestore, doc, setDoc, getDoc, updateDoc,
+    collection, query, where, getDocs, addDoc,
+    onSnapshot, orderBy, serverTimestamp, limit,
+    arrayUnion, arrayRemove, deleteDoc, writeBatch
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  // ⚠️ REEMPLAZA con tu config de Firebase:
+  const firebaseConfig = {
+    apiKey:            "TU_API_KEY",
+    authDomain:        "TU_PROJECT.firebaseapp.com",
+    projectId:         "TU_PROJECT_ID",
+    storageBucket:     "TU_PROJECT.firebasestorage.app",
+    messagingSenderId: "TU_SENDER_ID",
+    appId:             "TU_APP_ID",
+  };
+
+  const app  = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db   = getFirestore(app);
+
+  // Exponer al scope global
+  window.firebaseApp  = app;
+  window.firebaseAuth = auth;
+  window.firebaseDb   = db;
+  window.firebaseFns  = {
+    createUserWithEmailAndPassword, signInWithEmailAndPassword,
+    signOut, onAuthStateChanged,
+    updatePassword, updateEmail, EmailAuthProvider, reauthenticateWithCredential,
+    doc, setDoc, getDoc, updateDoc,
+    collection, query, where, getDocs, addDoc,
+    onSnapshot, orderBy, serverTimestamp, limit,
+    arrayUnion, arrayRemove, deleteDoc, writeBatch,
+  };
+
+  onAuthStateChanged(auth, user => {
+    window.currentFirebaseUser = user || null;
+    window._firebaseReady = true;
+  });
+</script>
+
+<script src="js/app.js"></script>
+
+</body>
+</html>

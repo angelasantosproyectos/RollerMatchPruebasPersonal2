@@ -4,6 +4,8 @@
 // ═══════════════════════════════════════════════════════
 
 // ── ESTADO GLOBAL ───────────────────────────────────
+const ADMIN_UID = 'd466APZIJEfVBSNzoYelYsxdNvl1';
+
 const state = {
   currentUser:      null,   // datos de Firestore
   firebaseUser:     null,   // firebase auth user
